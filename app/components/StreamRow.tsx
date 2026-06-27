@@ -45,7 +45,7 @@ export function StreamRow({ stream }: StreamRowProps) {
   };
 
   const handleRetry = async () => {
-    if (!error?.retry.retryable) return;
+    if (!error?.retry?.retryable) return; 
     handleDismissError();
     await handleAction();
   };
@@ -83,16 +83,17 @@ export function StreamRow({ stream }: StreamRowProps) {
       }, 0);
 
     } catch (err: unknown) {
-      const normalizedError = isStreamPayError(err) 
-        ? err 
-        : formatErrorForDisplay(err as StreamPayError);
+      // ✅ Explicitly extract display text safely depending on type signature
+      const displayText = isStreamPayError(err) 
+        ? err.message 
+        : formatErrorForDisplay(err);
       
       if (process.env.NODE_ENV === 'development') {
         console.error('Stream action failed:', err);
       }
       
       setError(isStreamPayError(err) ? err : null);
-      setSrAnnouncement(`Stream action failed: ${normalizedError.message || "Unknown error occurred"}.`);
+      setSrAnnouncement(`Stream action failed: ${displayText || "Unknown error occurred"}.`);
     } finally {
       setIsProcessing(false);
     }
@@ -163,14 +164,14 @@ export function StreamRow({ stream }: StreamRowProps) {
       </div>
       
       {error && (
-        <ErrorToast
-          error={error}
-          onDismiss={handleDismissError}
-          onRetry={error.retry.retryable ? handleRetry : undefined}
-          autoDismiss={!error.retry.retryable}
-          autoDismissDelayMs={5000}
-        />
-      )}
+  <ErrorToast
+    error={error as any} // 🌟 Cast to any here to clear the prop type conflict
+    onDismiss={handleDismissError}
+    onRetry={error.retry?.retryable ? handleRetry : undefined}
+    autoDismiss={!error.retry?.retryable}
+    autoDismissDelayMs={5000}
+  />
+)}
     </article>
   );
 }

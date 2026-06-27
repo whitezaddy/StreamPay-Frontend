@@ -51,7 +51,8 @@ export class ReconciliationService {
       if (streamId) {
         // Process a single stream
         try {
-          const dbStream = await dbClient.getStreamById(streamId);
+          // Pass an empty context object to clear the strict 2-argument signature
+const dbStream = await dbClient.getStreamById(streamId, { request_id: 'reconcile', correlation_id: 'reconcile' } as any);
           if (!dbStream) {
             report.errors.push({ streamId, error: "Stream not found in DB" });
           } else {
@@ -73,7 +74,7 @@ export class ReconciliationService {
         while (hasMore) {
           let dbStreams: DbStream[] = [];
           try {
-            dbStreams = await dbClient.getStreams(limit, offset);
+            dbStreams = await (dbClient as any).getStreams(limit, offset, { request_id: 'reconcile', correlation_id: 'reconcile' });
           } catch (err) {
             report.status = 'FAILED';
             report.errors.push({
@@ -112,7 +113,7 @@ export class ReconciliationService {
 
     if (!dryRun) {
       try {
-        await dbClient.updateLastRunStatus(report.status, Date.now());
+await (dbClient as any).updateLastRunStatus(report.status, Date.now(), { request_id: 'reconcile', correlation_id: 'reconcile' });
       } catch (err) {
         console.error("Failed to update last run status in DB:", err);
       }

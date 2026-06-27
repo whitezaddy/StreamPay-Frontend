@@ -1,9 +1,8 @@
-import { Stream, ActivityEvent } from "@/app/types/openapi";
+import { Stream as OpenApiStream } from "@/app/types/openapi";
 import { Org, Member } from "@/app/types/org";
 
-export const mockDb = {
 export const legacyDb = {
-  streams: new Map<string, Stream>([
+  streams: new Map<string, any>([
     [
       "stream-ada",
       {
@@ -64,6 +63,7 @@ export const legacyDb = {
 
   idempotency: new Map<string, unknown>(),
 };
+
 import { createHash } from "crypto";
 import type { ActivityEvent, ExportJob, Stream, User } from "@/app/types/openapi";
 import { createInMemoryPersistenceStore } from "@/app/lib/repositories/in-memory";
@@ -316,7 +316,7 @@ export function checkIdempotency(
     return { ok: false, conflict: true };
   }
 
-  return { ok: true, status: entry.status, body: entry.body };
+  return { ok: true, status: entry.status || 200, body: entry.body };
 }
 
 /**

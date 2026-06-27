@@ -18,11 +18,12 @@ import { validatePatchStreamBody } from "@/app/lib/stream-validation";
  * Fetches a stream by ID or returns a 404 error response.
  * This helper reduces code duplication between GET and PATCH handlers.
  */
-function findStreamOrError(id: string): { stream: Stream } | NextResponse {
-  const { streams } = getStore();
-  const stream = streams.get(id);
+async function findStreamOrError(id: string): Promise<{ stream: Stream } | NextResponse> {
+  const { streamRepository } = getStore();
+const stream = streamRepository.streams.get(id);
 
   if (!stream) {
+    // This errorResponse is from app/lib/errors/index.ts and is safe to use
     return errorResponse("NOT_FOUND", "Stream not found.", 404);
   }
   return { stream };
@@ -32,8 +33,12 @@ function findStreamOrError(id: string): { stream: Stream } | NextResponse {
  * GET a single stream by its ID.
  * (Mock implementation for route structure)
  */
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
-  const result = findStreamOrError(params.id);
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> } // 1. Put 'id: string' back here
+) {
+  const { id } = await params; // 2. This squiggly line will disappear!
+  const result = await findStreamOrError(id);
   if (result instanceof NextResponse) return result;
 
   return NextResponse.json({ data: result.stream });
@@ -50,9 +55,10 @@ export async function GET(_request: Request, { params }: { params: { id: string 
  */
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const result = findStreamOrError(params.id);
+  const { id } = await params;
+  const result = await findStreamOrError(id);
   if (result instanceof NextResponse) return result;
   const { stream } = result;
 
@@ -72,7 +78,7 @@ export async function PATCH(
   }
 
   const updatedStream = { ...stream, ...(body as Partial<Stream>), updatedAt: new Date().toISOString() };
-  getStore().streams.set(params.id, updatedStream);
+ getStore().streamRepository.streams.set(id, updatedStream);
 
   return NextResponse.json({ data: updatedStream });
 }

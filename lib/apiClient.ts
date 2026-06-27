@@ -76,39 +76,38 @@ async function createErrorFromResponse(
   if (errorBody && typeof errorBody === 'object') {
     const errObj = errorBody as Record<string, unknown>;
     
-    // Check for nested error structure
-    if (errObj.error && typeof errObj.error === 'object') {
-      const nestedError = errObj.error as Record<string, unknown>;
-      if (nestedError.code && nestedError.message && nestedError.request_id) {
-        return normalizeBackendError(
-          {
-            error: {
-              code: nestedError.code as string,
-              message: nestedError.message as string,
-              request_id: nestedError.request_id as string,
-              details: nestedError.details as Record<string, unknown> | undefined,
-            },
-          },
-          response.status,
-          { ...options, requestId: requestId || (nestedError.request_id as string) }
-        );
-      }
+   // Check for nested error structure
+  if (errObj.error && typeof errObj.error === 'object') {
+    const nestedError = errObj.error as Record<string, unknown>;
+    if (nestedError.code && nestedError.message && nestedError.request_id) {
+      return normalizeError({
+        code: nestedError.code as string,
+        message: nestedError.message as string,
+        request_id: nestedError.request_id as string,
+        status: response.status,
+        retry: {
+          retryable: (options as any)?.retryable ?? false
+        },
+        error: {
+          code: nestedError.code as string,
+          message: nestedError.message as string,
+          request_id: nestedError.request_id as string,
+        }
+      });
     }
+  }
     
     // Handle plain error objects
     if (errObj.code && errObj.message) {
-      return normalizeBackendError(
-        {
-          error: {
-            code: errObj.code as string,
-            message: errObj.message as string,
-            request_id: (errObj.request_id as string) || requestId || 'unknown',
-            details: errObj.details as Record<string, unknown> | undefined,
-          },
-        },
-        response.status,
-        { ...options, requestId }
-      );
+      return {
+  code: errObj.code as string,
+  message: errObj.message as string,
+  request_id: (errObj.request_id as string) || requestId || 'unknown',
+  status: response.status,
+  retry: {
+    retryable: (options as any)?.retryable ?? false
+  }
+} as any;
     }
     
     // Handle error message string

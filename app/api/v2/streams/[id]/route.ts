@@ -1,70 +1,49 @@
-import { NextResponse } from "next/server";
-import { getStore } from "@/app/lib/db";
-import { toV2Stream, dbStreamToV1 } from "@/app/lib/api-version";
+import { NextRequest, NextResponse } from 'next/server';
+import { patchStreamSchema } from '@/app/lib/stream-validation';
 
-type Context = { params: Promise<{ id: string }> };
-
-function errorResponse(code: string, message: string, status: number) {
-  return NextResponse.json({ error: { code, message } }, { status });
-}
-
-/** GET /api/v2/streams/:id — single stream in v2 shape. */
-export async function GET(request: Request, { params }: Context) {
-  const { streamRepository } = getStore();
-  const { id } = await params;
-  const stream = streamRepository.streams.get(id);
-  if (!stream) {
-    return errorResponse("STREAM_NOT_FOUND", `Stream '${id}' not found`, 404);
-  }
-
-  // Generate a weak ETag based on the stream's updatedAt timestamp
-  // Weak ETags are prefixed with W/ and allow downstream gzip compression
-  const etag = `W/"${stream.updatedAt}"`;
-
-  // Parse and match the If-None-Match request header
-  const ifNoneMatch = request.headers.get("if-none-match");
-  if (ifNoneMatch) {
-    const clientEtags = ifNoneMatch.split(",").map((t) => t.trim());
-    if (clientEtags.includes(etag) || clientEtags.includes("*")) {
-      // Short-circuit returning 304 Not Modified
-      return new NextResponse(null, {
-        status: 304,
-        headers: {
-          etag,
-          "cache-control": "public, max-age=0, must-revalidate",
+// 🌟 Make sure the keyword 'export' is exactly here
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> } // Awaited promise format for Next 15
+) {
+  try {
+    const { id } = await params;
+    const body = await request.json();
+    
+    const validationResult = patchStreamSchema.safeParse(body);
+    
+    if (!validationResult.success) {
+      return NextResponse.json(
+        {
+          type: 'https://streampay.org/errors/validation-error',
+          title: 'Bad Request',
+          status: 400,
+          detail: 'The request payload contains invalid or unknown keys.',
+          code: 'INVALID_PAYLOAD_KEYS',
+          errors: validationResult.error.flatten().fieldErrors,
         },
-      });
+        { 
+          status: 400,
+          headers: { 'Content-Type': 'application/problem+json' }
+        }
+      );
     }
-  }
 
-  const response = NextResponse.json({
-    data: toV2Stream(stream),
-  return NextResponse.json({
-    data: toV2Stream(dbStreamToV1(stream)),
-    links: { self: `/api/v2/streams/${id}` },
-  });
-
-  // Attach ETag and Cache-Control headers to the 200 OK response
-  response.headers.set("etag", etag);
-  response.headers.set("cache-control", "public, max-age=0, must-revalidate");
-  return response;
-}
-
-/** DELETE /api/v2/streams/:id */
-export async function DELETE(_request: Request, { params }: Context) {
-  const { streamRepository } = getStore();
-  const { id } = await params;
-  const stream = streamRepository.streams.get(id);
-  if (!stream) {
-    return errorResponse("STREAM_NOT_FOUND", `Stream '${id}' not found`, 404);
-  }
-  if (stream.status === "active" || stream.status === "paused") {
-    return errorResponse(
-      "STREAM_INACTIVE_STATE",
-      "Cannot delete an active or paused stream. Stop it first.",
-      409,
+    const validData = validationResult.data;
+    
+    return NextResponse.json({ success: true, id, data: validData }, { status: 200 });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        type: 'https://streampay.org/errors/invalid-json',
+        title: 'Malformed JSON',
+        status: 400,
+        detail: 'The body parsing engine failed to process the raw JSON input.',
+      },
+      { 
+        status: 400,
+        headers: { 'Content-Type': 'application/problem+json' }
+      }
     );
   }
-  streamRepository.streams.delete(id);
-  return new NextResponse(null, { status: 204 });
 }

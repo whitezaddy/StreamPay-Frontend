@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { NextResponse } from "next/server";
 import {
   checkIdempotency,
@@ -15,7 +16,7 @@ import { recordRequest, recordThrottle } from "@/app/lib/rate-limit-metrics";
 import { checkTokenAllowed, normaliseToken } from "@/app/lib/token-allowlist";
 import { validateCreateStreamBody } from "@/app/lib/stream-validation";
 
-export function errorResponse(code: string, message: string, status: number) {
+function errorResponse(code: string, message: string, status: number) {
   return createErrorResponse(code, message, status);
 }
 
@@ -176,13 +177,14 @@ export async function POST(request: Request) {
 
   const id = `stream-${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
+  
   const newStream = {
     createdAt: now,
     id,
     nextAction: "start" as const,
-    rate,
-    recipient,
-    schedule,
+    rate: rate || "",               // ✅ Fallback to empty string enforces strict string type
+    recipient: recipient || "",     // ✅ Fallback to empty string enforces strict string type
+    schedule: schedule || "",
     status: "draft" as const,
     updatedAt: now,
     token: normalisedToken,

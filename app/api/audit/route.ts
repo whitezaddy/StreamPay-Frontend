@@ -38,6 +38,13 @@ export async function GET(request: Request) {
     return actor;
   }
 
+  // 🌟 Add this exact null guard block right here
+  if (!actor) {
+    return NextResponse.json(
+      { error: "Unauthorized access attempt" }, 
+      { status: 401 }
+    );
+  }
   const filters = buildFilters(request);
   if (exportFormat && exportFormat !== "ndjson") {
     return createErrorResponse("INVALID_EXPORT_FORMAT", "Only export=ndjson is supported", 422);

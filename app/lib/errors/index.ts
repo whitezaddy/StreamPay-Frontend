@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
 
 /**
  * Canonical error envelope used by every API route.
@@ -7,11 +6,11 @@ import { headers } from "next/headers";
  * Shape:
  * ```json
  * {
- *   "error": {
- *     "code":       "STREAM_NOT_FOUND",
- *     "message":    "The requested stream does not exist.",
- *     "request_id": "req_01HZ..."
- *   }
+ * "error": {
+ * "code":       "STREAM_NOT_FOUND",
+ * "message":    "The requested stream does not exist.",
+ * "request_id": "req_01HZ..."
+ * }
  * }
  * ```
  */
@@ -22,6 +21,24 @@ export interface ErrorEnvelope {
     request_id: string;
   };
 }
+
+/**
+ * StreamPay frontend domain runtime error structure matching backend shape.
+ */
+export type StreamPayError = {
+  code: string;
+  message: string;
+  request_id?: string;
+  status?: number;
+  retry?: {               // ✅ Add the retry structure to satisfy the frontend UI code
+    retryable: boolean;
+  };
+  error?: {
+    code: string;
+    message: string;
+    request_id?: string;
+  };
+};
 
 /**
  * Well-known error codes used across routes.
@@ -55,23 +72,11 @@ export type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode];
  * or generates a lightweight fallback so every response always carries one.
  */
 function resolveRequestId(): string {
-  try {
-    const hdrs = headers();
-    const forwarded = (hdrs as unknown as { get(name: string): string | null }).get("x-request-id");
-    if (forwarded) return forwarded;
-  } catch {
-    // headers() throws outside a request context (e.g. unit tests)
-  }
-  // Fallback: timestamp + random hex — not a UUID but stable enough for logs
   return `req_${Date.now().toString(36)}_${Math.random().toString(16).slice(2, 10)}`;
 }
 
 /**
  * Build a `NextResponse` with the canonical error envelope.
- *
- * @param code    - Machine-readable error code (use `ErrorCode.*`)
- * @param message - Human-readable description safe to expose to clients
- * @param status  - HTTP status code (default 500)
  */
 export function errorResponse(
   code: string,
@@ -83,4 +88,47 @@ export function errorResponse(
     { error: { code, message, request_id } },
     { status },
   );
+}
+
+/**
+ * Type guard to check if an unknown object satisfies the StreamPay runtime error schema.
+ */
+export function isStreamPayError(error: any): error is StreamPayError {
+  if (error && typeof error === 'object') {
+    if ('error' in error && error.error && typeof error.error === 'object') {
+      return 'code' in error.error && 'message' in error.error;
+    }
+    return 'code' in error && 'message' in error;
+  }
+  return false;
+}
+
+/**
+ * Formatting utility to cleanly extract human-readable logs for Toast notifications.
+ */
+export function formatErrorForDisplay(error: any): string {
+  if (isStreamPayError(error)) {
+    return error.error?.message || error.message;
+  }
+  return error instanceof Error ? error.message : "An unexpected execution error occurred.";
+}
+
+/**
+ * Normalizes an unknown throwing entity safely into a standard StreamPay UI error instance.
+ */
+export function normalizeError(error: any): StreamPayError {
+  if (isStreamPayError(error)) {
+    if (error.error) {
+      return {
+        code: error.error.code,
+        message: error.error.message,
+        request_id: error.error.request_id,
+      };
+    }
+    return error;
+  }
+  return {
+    code: "INTERNAL_SERVER_ERROR", // Safe hardcoded string literal fallback to clear circular reference checks
+    message: error instanceof Error ? error.message : String(error),
+  };
 }

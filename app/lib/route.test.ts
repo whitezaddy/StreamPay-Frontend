@@ -3,7 +3,7 @@
  * - `PATCH /api/v2/streams/[id]`
  */
 
-import { PATCH } from "./route";
+import { PATCH } from "./route-helpers";
 import { getStore, resetDb } from "@/app/lib/db";
 import { Stream } from "@/app/types/openapi";
 

@@ -79,4 +79,5 @@ export async function GET(request: Request) {
       links: { self: `/api/v1/activity?limit=${limit}` },
     });
   }
+);
 }

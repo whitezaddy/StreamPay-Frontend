@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { realpathSync } from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 
 const [command, ...args] = process.argv.slice(2);
@@ -13,6 +14,8 @@ if (!command) {
 // don't see the project root under multiple casings on Windows.
 const canonicalCwd = realpathSync.native(process.cwd());
 process.chdir(canonicalCwd);
+
+const require = createRequire(import.meta.url);
 
 /**
  * Resolve the entrypoint for a locally-installed package binary.

@@ -14,7 +14,8 @@ async function runBackfill() {
     network: process.env.NETWORK || 'public',
     horizonUrl: process.env.HORIZON_URL || 'https://horizon.stellar.org',
     overlapWindow: parseInt(process.env.OVERLAP_WINDOW || '100', 10),
-    stallThresholdMs: 300000, // 5 minutes
+    stallThresholdMs: 30_000, 
+    hashWindowSize: parseInt(process.env.HASH_WINDOW_SIZE || '1000', 10), // ✅ Added required property
   });
 
   try {

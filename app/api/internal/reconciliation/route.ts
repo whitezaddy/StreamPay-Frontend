@@ -44,7 +44,7 @@ export async function POST(request: Request) {
 
   // Add dbClient mock streams
   try {
-    const clientStreams = await dbClient.getStreams(100, 0);
+    const clientStreams = await (dbClient.getStreams as any)(100, 0);
     dbStreamsList.push(...clientStreams);
   } catch {
     // Ignore

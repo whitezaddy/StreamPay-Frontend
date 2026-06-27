@@ -7,7 +7,7 @@ import { homeCopy, streamActionCopy } from "./content/copy";
 
 const ONBOARDING_KEY = "streampay_onboarding_dismissed";
 
-export default function Home() {
+export default function HomePage() {
   const actions = Object.values(streamActionCopy);
   const streamStatuses: StreamStatus[] = ["draft", "active", "paused", "ended"];
 
@@ -44,7 +44,7 @@ export default function Home() {
         </a>
         <a href="#stream-actions" className="button button--secondary">
           {homeCopy.secondaryCta}
-        </button>
+        </a>
       </div>
 
       <section

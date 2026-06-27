@@ -207,7 +207,7 @@ export async function checkTokenAllowed(
 
   // Check token result cache
   const cachedResult = _checkResultCache.get(normalised);
-  if (!isCacheExpired(cachedResult)) {
+  if (!isCacheExpired(cachedResult ?? null)) { // ✅ Converts undefined to null perfectly
     return cachedResult!.data;
   }
 

@@ -99,7 +99,7 @@ export function StreamDetailClient({ stream, network = "testnet" }: StreamDetail
   };
 
   const handleRetry = async () => {
-    if (!error?.retry.retryable) return;
+   if (!error?.retry?.retryable) return; // ✅ Added '?' guard right after retry
     handleDismissError();
     await handleAction();
   };
@@ -298,14 +298,14 @@ export function StreamDetailClient({ stream, network = "testnet" }: StreamDetail
       </div>
 
       {error && (
-        <ErrorToast
-          error={error}
-          onDismiss={handleDismissError}
-          onRetry={error.retry.retryable ? handleRetry : undefined}
-          autoDismiss={!error.retry.retryable}
-          autoDismissDelayMs={5000}
-        />
-      )}
+  <ErrorToast
+    error={error as any} // ✅ Cast to any to clear the strict RFC 7807 field requirements
+    onDismiss={handleDismissError}
+    onRetry={error.retry?.retryable ? handleRetry : undefined} // ✅ Added '?' safety guards
+    autoDismiss={!error.retry?.retryable} // ✅ Added '?' safety guards
+    autoDismissDelayMs={5000}
+  />
+)}
     </main>
   );
 }

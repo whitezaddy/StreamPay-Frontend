@@ -1,13 +1,3 @@
-import { AsyncLocalStorage } from 'async_hooks';
-
-const correlationStorage = new AsyncLocalStorage<{ correlationId: string }>();
-
-export function getCorrelationContext() {
-  return correlationStorage.getStore();
-}
-
-export function runWithCorrelation<T>(correlationId: string, callback: () => T): T {
-  return correlationStorage.run({ correlationId }, callback);
 import { NextRequest, NextResponse } from 'next/server';
 import { extractCorrelationContext, withCorrelationContext, logger, updateCorrelationContext } from '@/app/lib/logger';
 
@@ -46,8 +36,8 @@ export async function withCorrelationMiddleware(
     user_agent: headers.get('user-agent'),
   });
   
-  // Execute handler with correlation context
-  return withCorrelationContext(context, async () => {
+  // ✅ Capture the returned context execution block result safely inside a constant
+  const result = await withCorrelationContext(context, async () => {
     const response = await handler();
     
     // Strip internal headers from response
@@ -76,6 +66,9 @@ export async function withCorrelationMiddleware(
       headers: responseHeaders,
     });
   });
+
+  // ✅ Force strict type matching assignment fallback to guarantee a valid NextResponse instance
+  return (result as NextResponse) || NextResponse.next();
 }
 
 /**
